@@ -19,6 +19,11 @@
 
   <style>
     body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f9fafb; }
+    @media print {
+      body * { visibility: hidden; }
+      #printable-passenger-list, #printable-passenger-list * { visibility: visible; }
+      #printable-passenger-list { position: absolute; left: 0; top: 0; width: 100%; }
+    }
   </style>
 </head>
 <body>
@@ -74,6 +79,15 @@
     const IconCheck = () => (
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
     );
+    const IconList = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    );
+    const IconCopy = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    );
+    const IconPrinter = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    );
 
     // =====================================================================
     // COMPONENTE PRINCIPAL (APP)
@@ -89,6 +103,9 @@
 
       const [selectedSeat, setSelectedSeat] = useState(null);
       const [modalOpen, setModalOpen] = useState(false);
+      const [listModalOpen, setListModalOpen] = useState(false);
+      const [copiedList, setCopiedList] = useState(false);
+
       const [passengerName, setPassengerName] = useState('');
       const [passengerRG, setPassengerRG] = useState('');
       const [saving, setSaving] = useState(false);
@@ -124,9 +141,10 @@
         return () => unsubscribe();
       }, []);
 
+      // Login do Administrador (senha: oliveiraturismo)
       const handleAdminLogin = (e) => {
         e.preventDefault();
-        if (password === 'admin123') {
+        if (password === 'oliveiraturismo') {
           setView('admin');
           setPassword('');
           setLoginError('');
@@ -227,6 +245,33 @@
         setHasSearched(true);
       };
 
+      // Lista estruturada e ordenada de passageiros com Nome e RG
+      const passengerList = Object.entries(seats)
+        .filter(([seatNum, data]) => data && data.name && data.name.trim() !== '')
+        .map(([seatNum, data]) => ({
+          seat: parseInt(seatNum, 10),
+          name: data.name.trim(),
+          rg: data.rg && data.rg.trim() !== '' ? data.rg.trim() : 'Não informado'
+        }))
+        .sort((a, b) => a.seat - b.seat);
+
+      // Copiar lista formatada para a área de transferência
+      const copyPassengerList = async () => {
+        if (passengerList.length === 0) return;
+        const text = `📋 LISTA DE PASSAGEIROS - OLIVEIRA TURISMO\nTotal Confirmados: ${passengerList.length}/48\n` +
+          `====================================\n` +
+          passengerList.map(p => `Poltrona ${p.seat.toString().padStart(2, '0')}: ${p.name} | RG: ${p.rg}`).join('\n') +
+          `\n====================================`;
+        
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopiedList(true);
+          setTimeout(() => setCopiedList(false), 3000);
+        } catch (err) {
+          console.error("Erro ao copiar lista:", err);
+        }
+      };
+
       if (loading) {
         return (
           <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -288,7 +333,7 @@
               <div>
                 <input 
                   type="password" 
-                  placeholder="Senha de acesso (padrão: admin123)" 
+                  placeholder="Senha de acesso" 
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-800 outline-none transition" 
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
@@ -312,7 +357,7 @@
       // =====================================================================
       const renderAdmin = () => {
         const totalSeats = 48;
-        const occupiedCount = Object.keys(seats).length;
+        const occupiedCount = passengerList.length;
 
         return (
           <div className="min-h-screen bg-gray-50 pb-20">
@@ -322,7 +367,14 @@
                   <IconArrowLeft />
                 </button>
                 <h2 className="text-lg font-bold">Gestão do Ônibus (48 Lugares)</h2>
-                <div className="w-8"></div>
+                <button 
+                  onClick={() => setListModalOpen(true)}
+                  className="flex items-center gap-1.5 bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold px-3 py-1.5 rounded-lg text-xs transition shadow cursor-pointer"
+                  title="Puxar Lista de Passageiros"
+                >
+                  <IconList />
+                  <span>Lista ({occupiedCount})</span>
+                </button>
               </div>
             </div>
 
@@ -339,14 +391,23 @@
                 </div>
               )}
 
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex items-center justify-between">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="font-bold text-gray-800 text-lg">Status da Ocupação</h3>
                   <p className="text-sm text-gray-500">Clique em qualquer poltrona para cadastrar ou liberar</p>
                 </div>
-                <div className="text-right">
-                  <span className="text-2xl font-black text-blue-800">{occupiedCount}</span>
-                  <span className="text-gray-500 font-semibold text-lg"> / {totalSeats}</span>
+                <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                  <button 
+                    onClick={() => setListModalOpen(true)}
+                    className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition shadow cursor-pointer"
+                  >
+                    <IconList />
+                    <span>Puxar Lista de Passageiros</span>
+                  </button>
+                  <div className="text-right shrink-0">
+                    <span className="text-2xl font-black text-blue-800">{occupiedCount}</span>
+                    <span className="text-gray-500 font-semibold text-lg"> / {totalSeats}</span>
+                  </div>
                 </div>
               </div>
 
@@ -377,6 +438,105 @@
                 </div>
               </div>
             </div>
+
+            {/* Modal: Puxar Lista dos Passageiros (Nome Completo + RG) */}
+            {listModalOpen && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div id="printable-passenger-list" className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                  <div className="bg-blue-800 px-6 py-4 flex items-center justify-between text-white shrink-0">
+                    <div className="flex items-center gap-2">
+                      <IconList />
+                      <h3 className="text-lg font-bold">Lista de Passageiros ({passengerList.length} de 48)</h3>
+                    </div>
+                    <button onClick={() => setListModalOpen(false)} className="text-gray-300 hover:text-white font-bold text-xl cursor-pointer">✕</button>
+                  </div>
+                  
+                  {/* Barra de Ações: Copiar e Imprimir */}
+                  <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                    <p className="text-xs text-gray-500 font-medium">
+                      Exibindo nome completo e RG de todos os passageiros confirmados.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={copyPassengerList}
+                        disabled={passengerList.length === 0}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          copiedList 
+                            ? 'bg-green-600 text-white' 
+                            : 'bg-yellow-400 hover:bg-yellow-500 text-blue-900'
+                        }`}
+                        title="Copiar lista para o WhatsApp ou relatório"
+                      >
+                        <IconCopy />
+                        <span>{copiedList ? 'Lista Copiada!' : 'Copiar Lista'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => window.print()}
+                        disabled={passengerList.length === 0}
+                        className="flex items-center gap-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
+                        title="Imprimir lista ou salvar em PDF"
+                      >
+                        <IconPrinter />
+                        <span>Imprimir / PDF</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tabela de Passageiros */}
+                  <div className="p-6 overflow-y-auto grow">
+                    {passengerList.length === 0 ? (
+                      <div className="text-center py-12 text-gray-400">
+                        <div className="w-12 h-12 mx-auto mb-2 opacity-50 flex justify-center"><IconUser /></div>
+                        <p className="font-semibold text-gray-600">Nenhum passageiro cadastrado ainda.</p>
+                        <p className="text-xs text-gray-400 mt-1">Cadastre os passageiros clicando nas poltronas do ônibus.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-gray-200 text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50">
+                              <th className="py-3 px-4 w-24">Poltrona</th>
+                              <th className="py-3 px-4">Nome Completo</th>
+                              <th className="py-3 px-4">RG / Documento</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 text-sm">
+                            {passengerList.map((passenger) => (
+                              <tr key={passenger.seat} className="hover:bg-blue-50/50 transition">
+                                <td className="py-3 px-4 font-bold text-blue-800">
+                                  <span className="inline-block bg-blue-100 text-blue-900 rounded-md px-2.5 py-1 text-xs font-black">
+                                    Nº {passenger.seat.toString().padStart(2, '0')}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 font-semibold text-gray-900 capitalize">
+                                  {passenger.name}
+                                </td>
+                                <td className="py-3 px-4 text-gray-700 font-mono text-xs">
+                                  {passenger.rg}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Rodapé do Modal */}
+                  <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-end shrink-0">
+                    <button 
+                      type="button"
+                      onClick={() => setListModalOpen(false)} 
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-4 py-2 rounded-lg text-sm transition cursor-pointer"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Modal de Cadastro / Edição da Poltrona */}
             {modalOpen && (

@@ -13,7 +13,9 @@ Desenvolvido para **Oliveira Turismo** com interface intuitiva e sincronização
 - **Cartão Visual de Embarque:** Exibição clara e destacada com confirmação visual.
 
 ### 🛡️ Área do Administrador
-- **Acesso Seguro por Senha:** Protegido por autenticação (senha padrão: `admin123`).
+- **Acesso Seguro por Senha:** Protegido por autenticação (senha: `oliveiraturismo`).
+- **Puxar Lista de Passageiros (Nome e RG):** Botão para visualizar a lista completa de passageiros confirmados com número da poltrona, nome completo e documento/RG.
+- **Copiar Lista & Imprimir/PDF:** Opção de copiar a lista formatada com um clique para colar no WhatsApp ou imprimir/gerar PDF.
 - **Mapa do Ônibus (48 Lugares):** Layout visual realista (12 fileiras com 4 poltronas cada, corredor central e indicação de motorista / porta).
 - **Cadastro e Liberação de Poltronas:** Clique em qualquer assento para registrar nome completo e RG/documento do passageiro ou liberar o assento.
 - **Contador de Ocupação:** Acompanhe em tempo real quantos lugares estão ocupados de 48.
